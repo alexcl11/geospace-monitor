@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { finalize, timeout } from 'rxjs';
 import * as L from 'leaflet';
 import { environment } from '../environments/environment';
-
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -89,7 +89,11 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.isLoading = true; // Encendemos el loading por si acaso
     this.startLoadingFailSafe();
 
-    this.http.get<any>(this.apiUrl).pipe(
+    const headers = new HttpHeaders({
+      'ngrok-skip-browser-warning': 'true'
+    });
+
+    this.http.get<any>(this.apiUrl, { headers: headers }).pipe(
       timeout(50000),
       finalize(() => {
         // Pase lo que pase (éxito, error o timeout), apagamos el loading.
