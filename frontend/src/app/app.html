@@ -1,5 +1,45 @@
-<div class="header">
-  <h1>🚀 GeoSpace Monitor</h1>
-  <p>Live NASA Telemetry (Earth Observation)</p>
+<div class="dashboard">
+  <button class="menu-toggle" type="button" (click)="toggleSidebar()" aria-label="Abrir o cerrar menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <aside class="sidebar" [class.open]="isSidebarOpen">
+    <div class="header">
+      <h1>🚀 GeoSpace</h1>
+      <p>Live Telemetry System</p>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-box">
+        <span class="stat-value">{{ filteredEvents.length }}</span>
+        <span class="stat-label">Active Events</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <h3>CATEGORIES</h3>
+      <button 
+        *ngFor="let cat of categories" 
+        [class.active]="selectedCategory === cat"
+        (click)="filterByCategory(cat)">
+        <span class="dot" [class]="cat"></span> {{ cat }}
+      </button>
+    </div>
+  </aside>
+
+  <div
+    class="mobile-backdrop"
+    *ngIf="isSidebarOpen && isMobileView()"
+    (click)="closeSidebar()"
+    aria-hidden="true">
+  </div>
+
+  <div id="map"></div>
 </div>
-<div id="map"></div>
+<div class="loading-overlay" *ngIf="isLoading && filteredEvents.length === 0">
+  <div class="radar-spinner"></div>
+  <h2>ESTABLECIENDO CONEXIÓN SATELITAL</h2>
+  <p>Descargando telemetría global. Por favor, espere...</p>
+</div>

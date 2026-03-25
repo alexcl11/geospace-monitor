@@ -26,11 +26,11 @@ def read_root():
 
 # 4. El endpoint principal que procesa los datos espaciales
 @app.get("/api/events")
-async def get_events(limit: int = 50):
+async def get_events(limit: int = 500, days: int = 7):
     # Usamos httpx.AsyncClient para no bloquear el servidor mientras la NASA responde
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(f"{NASA_EONET_URL}?limit={limit}")
+            response = await client.get(f"{NASA_EONET_URL}?limit={limit}&status=open&days={days}")
             response.raise_for_status()
             data = response.json()
 
