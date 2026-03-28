@@ -1,14 +1,17 @@
 :host {
   display: block;
   height: 100vh;
+  height: 100dvh;
   background-color: #0b0f19;
   color: white;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow: hidden;
 }
 
 .dashboard {
   display: flex;
   height: 100%;
+  min-height: 100%;
   position: relative;
 }
 
@@ -25,6 +28,10 @@
   flex-direction: column;
   z-index: 1000; /* Asegura que se vea por encima del mapa */
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mobile-backdrop {
@@ -36,7 +43,42 @@
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-h1 { margin: 0; font-size: 1.8rem; color: #00d2ff; text-transform: uppercase; letter-spacing: 2px; }
+.brand-title {
+  margin: 0;
+  font-size: 1.45rem;
+  color: #d6f4ff;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  color: #3bb8ff;
+}
+
+.brand-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 6px rgba(59, 184, 255, 0.28));
+}
+
+.brand-icon svg circle {
+  fill: rgba(59, 184, 255, 0.2);
+}
+
+.brand-icon svg ellipse {
+  stroke-linecap: round;
+}
+
+h1 { margin: 0; }
 p { margin: 5px 0 0; color: #8892b0; font-size: 0.85rem; letter-spacing: 1px; }
 
 /* Contador */
@@ -167,8 +209,9 @@ p { margin: 5px 0 0; color: #8892b0; font-size: 0.85rem; letter-spacing: 1px; }
 /* Menú de Botones */
 .filters {
   padding: 20px;
-  flex: 1;
-  overflow-y: auto;
+  flex: 0 0 auto;
+  overflow: visible;
+  padding-bottom: 24px;
 }
 
 h3 { font-size: 0.8rem; color: #8892b0; margin-bottom: 15px; letter-spacing: 2px; }
@@ -208,6 +251,7 @@ button.active {
   flex: 1;
   width: 100%;
   height: 100%;
+  min-height: 320px;
   background-color: #000;
 }
 /* --- PANTALLA DE CARGA (LOADING) --- */
@@ -299,6 +343,7 @@ button.active {
     transform: translateX(-102%);
     transition: transform 0.3s ease;
     z-index: 2100;
+    overscroll-behavior: contain;
   }
 
   .sidebar.open {
@@ -330,7 +375,24 @@ button.active {
   border: 1px solid #00d2ff;
 }
 
+.leaflet-popup-content {
+  margin: 10px 12px !important;
+}
+
 /* Ajuste para que el mapa de calor se vea bien sobre el fondo oscuro */
 .leaflet-heatmap-layer {
   opacity: 0.8;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(0, 210, 255, 0.35);
+  border-radius: 6px;
 }

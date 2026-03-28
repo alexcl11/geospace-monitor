@@ -5,7 +5,6 @@ import { finalize, timeout } from 'rxjs';
 import * as L from 'leaflet';
 import { environment } from '../environments/environment';
 import { HttpHeaders } from '@angular/common/http';
-
 import 'leaflet.heat';
 
 // Añadimos esta interfaz para que TS no se queje de L.heatLayer
@@ -23,7 +22,7 @@ declare module 'leaflet' {
 export class AppComponent implements OnInit, AfterViewInit {
   private map: any;
   private markerLayerGroup = L.layerGroup(); // Grupo para poder borrar y repintar puntos
-  private heatLayer: any = null;
+  private heatLayers: L.Layer[] = [];
   private apiUrl = environment.apiUrl;
   private loadingFailSafeTimer: ReturnType<typeof setTimeout> | null = null;
   private mobileBreakpoint = 900;
@@ -181,12 +180,26 @@ export class AppComponent implements OnInit, AfterViewInit {
   private drawMarkers(): void {
     this.markerLayerGroup.clearLayers(); // Borramos los puntos antiguos
 
-    if (this.heatLayer) {
-      this.map.removeLayer(this.heatLayer);
-      this.heatLayer = null;
+    if (this.heatLayers.length > 0) {
+      this.heatLayers.forEach((layer) => this.map.removeLayer(layer));
+      this.heatLayers = [];
     }
 
-    const heatPoints: any[] = [];
+    const heatPointsByType: Record<'wildfire' | 'storm' | 'iceberg' | 'other', Array<[number, number, number]>> = {
+      wildfire: [],
+      storm: [],
+      iceberg: [],
+      other: []
+    };
+
+    // Normalizamos por el mayor evento del lote visible para que el heatmap
+    // no se vea "apagado" en producción con datasets pequeños.
+    const maxVisibleAreaKm2 = Math.max(
+      ...this.filteredEvents
+        .map((event: any) => this.getAreaKm2(event))
+        .filter((area: number) => Number.isFinite(area) && area > 0),
+      1
+    );
 
     this.filteredEvents.forEach((event: any) => {
       try {
@@ -201,11 +214,9 @@ export class AppComponent implements OnInit, AfterViewInit {
             return;
           }
 
-        // 2. Asignamos colores
-        let markerColor = "#ff3300"; // Rojo (Incendios)
-        if (cat.includes('Volcanoes')) markerColor = "#ffaa00"; 
-        else if (cat.includes('Icebergs')) markerColor = "#00d2ff"; 
-        else if (cat.includes('Storms')) markerColor = "#cc00ff"; 
+        // 2. Asignamos color y tipo de heatmap según categoría
+        const visual = this.getVisualStyle(cat);
+        const markerColor = visual.markerColor;
 
           if (this.showMarkers) {
             // Calcular radio dinámico basado en magnitud
@@ -233,17 +244,17 @@ export class AppComponent implements OnInit, AfterViewInit {
           
             marker.bindPopup(`
               <strong style="color: ${markerColor};">${event.title}</strong><br>
-              Categoría: ${cat}<br>
-              Fecha: ${new Date(event.date).toLocaleDateString()}<br>
-              Magnitud: ${this.getMagnitudeDisplay(event)}
+              Category: ${cat}<br>
+              Date: ${new Date(event.date).toLocaleDateString()}<br>
+              Magnitude: ${this.getMagnitudeDisplay(event)}
             `);
             
             this.markerLayerGroup.addLayer(marker);
           }
 
           // Usar magnitud para intensidad del heatmap
-          const heatIntensity = this.getHeatIntensity(event);
-          heatPoints.push([lat, lon, heatIntensity]);
+          const heatIntensity = this.getHeatIntensity(event, maxVisibleAreaKm2);
+          heatPointsByType[visual.heatKey].push([lat, lon, heatIntensity]);
         }
       } catch (error) {
         // Si un evento de la NASA viene rarísimo, lo ignoramos para que no rompa la web
@@ -251,20 +262,38 @@ export class AppComponent implements OnInit, AfterViewInit {
       }
     });
 
-    if (this.showHeatmap && heatPoints.length > 0) {
-      this.heatLayer = L.heatLayer(heatPoints, {
-        radius: this.heatRadius,
-        blur: this.heatBlur,
-        maxZoom: 10,
-        gradient: {
-          0.0: '#ffcc99', // Amarillo anaranjado - magnitud muy baja
-          0.2: '#ffb347', // Naranja suave - magnitud baja
-          0.4: '#ff8c00', // Naranja intenso - magnitud media
-          0.6: '#ff6347', // Rojo anaranjado - magnitud media-alta
-          0.8: '#ff3300', // Rojo brillante - magnitud alta
-          1.0: '#cc0000'  // Rojo oscuro - magnitud máxima
-        }
-      }).addTo(this.map);
+    const heatLayerFactory = (L as any).heatLayer;
+    if (this.showHeatmap && typeof heatLayerFactory === 'function') {
+      this.addCategoryHeatLayer(heatPointsByType.wildfire, {
+        0.2: '#ffb3a7',
+        0.5: '#ff5a36',
+        0.8: '#ff2a00',
+        1.0: '#b30000'
+      });
+
+      this.addCategoryHeatLayer(heatPointsByType.storm, {
+        0.2: '#9b8dff',
+        0.5: '#6c7eff',
+        0.8: '#3f55ff',
+        1.0: '#5a00cc'
+      });
+
+      this.addCategoryHeatLayer(heatPointsByType.iceberg, {
+        0.2: '#b8ecff',
+        0.5: '#74d1ff',
+        0.8: '#2ca8ff',
+        1.0: '#0068e6'
+      });
+
+      this.addCategoryHeatLayer(heatPointsByType.other, {
+        0.2: '#ffd49a',
+        0.5: '#ffb347',
+        0.8: '#ff8c00',
+        1.0: '#cc6500'
+      });
+    } else if (this.showHeatmap && typeof heatLayerFactory !== 'function') {
+      // Evita romper el mapa si el plugin no llegó a cargar.
+      console.warn('leaflet.heat no está disponible; mostrando solo puntos exactos.');
     }
 
   }
@@ -292,11 +321,50 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   getCategoryColor(category: string): string {
-    const cat = category || 'Unknown';
-    if (cat.includes('Volcanoes')) return '#ffaa00';
-    if (cat.includes('Icebergs')) return '#00d2ff';
-    if (cat.includes('Storms')) return '#cc00ff';
-    return '#ff3300';
+    return this.getVisualStyle(category || 'Unknown').markerColor;
+  }
+
+  private addCategoryHeatLayer(points: Array<[number, number, number]>, gradient: Record<number, string>): void {
+    if (!this.map || points.length === 0) {
+      return;
+    }
+
+    const heatLayerFactory = (L as any).heatLayer;
+    if (typeof heatLayerFactory !== 'function') {
+      return;
+    }
+
+    const layer = heatLayerFactory(points, {
+      radius: this.heatRadius,
+      blur: this.heatBlur,
+      maxZoom: 10,
+      minOpacity: 0.25,
+      max: 1.0,
+      gradient
+    }).addTo(this.map);
+
+    this.heatLayers.push(layer);
+  }
+
+  private getVisualStyle(category: string): {
+    markerColor: string;
+    heatKey: 'wildfire' | 'storm' | 'iceberg' | 'other';
+  } {
+    const normalized = String(category || '').toLowerCase();
+
+    if (normalized.includes('storm') || normalized.includes('cyclone') || normalized.includes('hurricane')) {
+      return { markerColor: '#5f6eff', heatKey: 'storm' };
+    }
+
+    if (normalized.includes('iceberg') || normalized.includes('ice')) {
+      return { markerColor: '#2ca8ff', heatKey: 'iceberg' };
+    }
+
+    if (normalized.includes('wildfire') || normalized.includes('fire')) {
+      return { markerColor: '#ff2a00', heatKey: 'wildfire' };
+    }
+
+    return { markerColor: '#ff8c00', heatKey: 'other' };
   }
 
   private updateDerivedStats(): void {
@@ -353,25 +421,10 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   private calculateMarkerRadius(event: any): number {
-    const magnitude = event?.magnitudeValue;
-    const unit = event?.magnitudeUnit;
+    const areaKm2 = this.getAreaKm2(event);
 
-    if (magnitude == null || magnitude <= 0) {
+    if (areaKm2 <= 0) {
       return 6; // Radio por defecto si no hay magnitud
-    }
-
-    let areaKm2 = 0;
-
-    // Convertir a km² según el unit
-    if (unit === 'acres') {
-      areaKm2 = magnitude * 0.00404686;
-    } else if (unit === 'km²' || unit === 'square kilometers') {
-      areaKm2 = magnitude;
-    } else if (unit === 'hectares') {
-      areaKm2 = magnitude * 0.01;
-    } else {
-      // Para units desconocidos, asumir un valor por defecto
-      return 6;
     }
 
     // Convertir área a radio: Area = π * r² => r = sqrt(Area / π)
@@ -384,35 +437,41 @@ export class AppComponent implements OnInit, AfterViewInit {
     return radiusPixels;
   }
 
-  private getHeatIntensity(event: any): number {
-    const magnitude = event?.magnitudeValue;
-    const unit = event?.magnitudeUnit;
+  private getHeatIntensity(event: any, maxVisibleAreaKm2: number): number {
+    const areaKm2 = this.getAreaKm2(event);
 
-    if (magnitude == null || magnitude <= 0) {
+    if (areaKm2 <= 0) {
       return 0.3; // Intensidad mínima por defecto
     }
 
-    let areaKm2 = 0;
+    // Escala relativa al dataset visible. sqrt mejora contraste visual.
+    const ratio = Math.sqrt(areaKm2 / maxVisibleAreaKm2);
 
-    // Convertir a km² según el unit
-    if (unit === 'acres') {
-      areaKm2 = magnitude * 0.00404686;
-    } else if (unit === 'km²' || unit === 'square kilometers') {
-      areaKm2 = magnitude;
-    } else if (unit === 'hectares') {
-      areaKm2 = magnitude * 0.01;
-    } else {
-      // Para units desconocidos, devolver intensidad media
-      return 0.5;
+    // Clamped entre 0.16 y 0.82 para suavizar el mapa de calor
+    return Math.min(Math.max(ratio, 0.16), 0.82);
+  }
+
+  private getAreaKm2(event: any): number {
+    const magnitude = Number(event?.magnitudeValue);
+    const unitRaw = event?.magnitudeUnit ? String(event.magnitudeUnit) : '';
+    const unit = unitRaw.trim().toLowerCase();
+
+    if (!Number.isFinite(magnitude) || magnitude <= 0) {
+      return 0;
     }
 
-    // Normalizar a rango 0-1 usando escala logarítmica para mejor distribución
-    // Log scale: ln(area + 1) para evitar log(0)
-    // Máximo esperado: ~10000 km² (eventos grandes)
-    const maxKm2 = 10000;
-    const logIntensity = Math.log(areaKm2 + 1) / Math.log(maxKm2 + 1);
-    
-    // Clamped entre 0.2 y 1.0
-    return Math.min(Math.max(logIntensity, 0.2), 1.0);
+    if (unit === 'acres') {
+      return magnitude * 0.00404686;
+    }
+
+    if (unit === 'km²' || unit === 'km2' || unit === 'square kilometers') {
+      return magnitude;
+    }
+
+    if (unit === 'hectares' || unit === 'ha') {
+      return magnitude * 0.01;
+    }
+
+    return 0;
   }
 }

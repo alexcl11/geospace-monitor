@@ -1,5 +1,5 @@
 <div class="dashboard">
-  <button class="menu-toggle" type="button" (click)="toggleSidebar()" aria-label="Abrir o cerrar menu">
+  <button class="menu-toggle" type="button" (click)="toggleSidebar()" aria-label="Open or close menu">
     <span></span>
     <span></span>
     <span></span>
@@ -7,7 +7,15 @@
 
   <aside class="sidebar" [class.open]="isSidebarOpen">
     <div class="header">
-      <h1>🚀 GeoSpace</h1>
+      <h1 class="brand-title">
+        <span class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false">
+            <circle cx="12" cy="12" r="6.4"></circle>
+            <ellipse cx="12" cy="12" rx="11" ry="4.2" transform="rotate(-16 12 12)"></ellipse>
+          </svg>
+        </span>
+        <span>GeoSpace</span>
+      </h1>
       <p>Live Telemetry System</p>
     </div>
     
@@ -88,6 +96,6 @@
 </div>
 <div class="loading-overlay" *ngIf="isLoading && filteredEvents.length === 0">
   <div class="radar-spinner"></div>
-  <h2>ESTABLECIENDO CONEXIÓN SATELITAL</h2>
-  <p>Descargando telemetría global. Por favor, espere...</p>
+  <h2>ESTABLISHING SATELLITE LINK</h2>
+  <p>Downloading global telemetry. Please wait...</p>
 </div>

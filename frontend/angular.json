@@ -27,6 +27,9 @@
             "styles": [
               "node_modules/leaflet/dist/leaflet.css",
               "src/styles.css"
+            ],
+            "scripts": [
+              "node_modules/leaflet.heat/dist/leaflet-heat.js"
             ]
           },
           "configurations": {
@@ -39,7 +42,7 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "6kB",
+                  "maximumWarning": "7kB",
                   "maximumError": "8kB"
                 }
               ],
