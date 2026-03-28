@@ -14,8 +14,45 @@
     <div class="stats">
       <div class="stat-box">
         <span class="stat-value">{{ filteredEvents.length }}</span>
-        <span class="stat-label">Active Events</span>
+        <span class="stat-label">Visible Events</span>
       </div>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <span class="meta-label">Total Dataset</span>
+          <span class="meta-value">{{ allEvents.length }}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Time Window</span>
+          <span class="meta-value">{{ timeRangeText }}</span>
+        </div>
+      </div>
+
+      <div class="meta-sync">
+        <span>Last Sync</span>
+        <strong>{{ lastSyncText }}</strong>
+      </div>
+    </div>
+
+    <div class="layer-controls">
+      <h3>VISUAL LAYERS</h3>
+      <div class="toggle-row">
+        <button class="layer-btn" [class.active]="showMarkers" (click)="toggleMarkers()">Exact Points</button>
+        <button class="layer-btn" [class.active]="showHeatmap" (click)="toggleHeatmap()">Heatmap</button>
+      </div>
+
+      <label class="range-label" for="heat-radius">Heat Radius: {{ heatRadius }}</label>
+      <input
+        id="heat-radius"
+        class="range-control"
+        type="range"
+        min="10"
+        max="50"
+        step="1"
+        [value]="heatRadius"
+        (input)="setHeatRadius($any($event.target).value)"
+        [disabled]="!showHeatmap"
+      />
     </div>
 
     <div class="filters">
@@ -26,6 +63,17 @@
         (click)="filterByCategory(cat)">
         <span class="dot" [class]="cat"></span> {{ cat }}
       </button>
+
+      <div class="top-categories" *ngIf="categoryStats.length > 0">
+        <h3>TOP CATEGORIES</h3>
+        <div class="top-item" *ngFor="let item of categoryStats">
+          <div class="top-name">
+            <span class="legend-dot" [style.background]="getCategoryColor(item.name)"></span>
+            <span>{{ item.name }}</span>
+          </div>
+          <strong>{{ item.count }}</strong>
+        </div>
+      </div>
     </div>
   </aside>
 
