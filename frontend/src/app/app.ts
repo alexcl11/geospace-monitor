@@ -2,15 +2,13 @@ import { Component, OnInit, AfterViewInit, ChangeDetectorRef } from '@angular/co
 import { CommonModule } from '@angular/common'; // <-- VITAL para poder usar el *ngFor en los botones
 import { HttpClient } from '@angular/common/http';
 import { finalize, timeout } from 'rxjs';
-import * as L from 'leaflet';
+import type * as Leaflet from 'leaflet';
 import { environment } from '../environments/environment';
 import { HttpHeaders } from '@angular/common/http';
-import 'leaflet.heat';
 
-// Añadimos esta interfaz para que TS no se queje de L.heatLayer
-declare module 'leaflet' {
-  function heatLayer(latlngs: L.LatLngExpression[], options?: any): L.Layer;
-}
+declare const L: typeof Leaflet & {
+  heatLayer?: (latlngs: Leaflet.LatLngExpression[], options?: any) => Leaflet.Layer;
+};
 
 @Component({
   selector: 'app-root',
@@ -22,7 +20,7 @@ declare module 'leaflet' {
 export class AppComponent implements OnInit, AfterViewInit {
   private map: any;
   private markerLayerGroup = L.layerGroup(); // Grupo para poder borrar y repintar puntos
-  private heatLayers: L.Layer[] = [];
+  private heatLayers: Leaflet.Layer[] = [];
   private apiUrl = environment.apiUrl;
   private loadingFailSafeTimer: ReturnType<typeof setTimeout> | null = null;
   private mobileBreakpoint = 900;

@@ -27,6 +27,10 @@
             "styles": [
               "node_modules/leaflet/dist/leaflet.css",
               "src/styles.css"
+            ],
+            "scripts": [
+              "node_modules/leaflet/dist/leaflet.js",
+              "node_modules/leaflet.heat/dist/leaflet-heat.js"
             ]
           },
           "configurations": {
