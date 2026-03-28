@@ -49,8 +49,8 @@ async def get_events(limit: int = 500, days: int = 7):
                             "lat": latest_geo["coordinates"][1],
                             "lon": latest_geo["coordinates"][0]
                         },
-                        "magnitudeValue": geom.get("magnitudeValue"),
-                        "magnitudeUnit": geom.get("magnitudeUnit")
+                        "magnitudeValue": latest_geo.get("magnitudeValue"),
+                        "magnitudeUnit": latest_geo.get("magnitudeUnit")
                     })
             return {"total": len(clean_events), "events": clean_events}
             
