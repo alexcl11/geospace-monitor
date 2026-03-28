@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
-
+# Test de despliegue automático con GitHub Actions 🤖
 # 1. Inicializamos la aplicación
 app = FastAPI(
     title="GeoSpace Monitor API",
